@@ -1,0 +1,46 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/lem-api:$COMMIT_SHA', '.']
+
+  # Push the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/lem-api:$COMMIT_SHA']
+
+  # Tag as latest
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['tag', 'gcr.io/$PROJECT_ID/lem-api:$COMMIT_SHA', 'gcr.io/$PROJECT_ID/lem-api:latest']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/lem-api:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'lem-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/lem-api:$COMMIT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - '$PROJECT_ID:asia-east1:lemonade-postgres'
+      - '--update-secrets'
+      - 'DATABASE_URL=lem-database-url:latest,JWT_SECRET_KEY=lem-jwt-secret:latest,STRIPE_SECRET_KEY=lem-stripe-secret:latest,STRIPE_WEBHOOK_SECRET=lem-stripe-webhook-secret:latest,GOOGLE_CLIENT_SECRET=lem-google-client-secret:latest,SMTP_PASSWORD=lem-smtp-password:latest'
+      - '--set-env-vars'
+      - 'APP_NAME=Lemonade API,DEBUG=false,API_VERSION=v1,JWT_ALGORITHM=HS256,ACCESS_TOKEN_EXPIRE_MINUTES=30,REFRESH_TOKEN_EXPIRE_DAYS=7,STRIPE_PUBLISHABLE_KEY=pk_live_51QDmyKRuxqNDymUT9YCYpIUX7boe0LQTxNlLJI3Ey9v0QTlkQpeBLMJ2BwNW4LFsw1Usv1v7VYrc4CVxAXoOuOMO00q8olv8So,GOOGLE_CLIENT_ID=903028288904-j39mh2o9mjj0f8mk43mgb1uu38toh2on.apps.googleusercontent.com,GCS_BUCKET_NAME=lemonade-files,GA_MEASUREMENT_ID=G-87FVVW85NQ,GA_API_SECRET=raQQGRHIQXu4bi2L-XtFog,SMTP_HOST=smtp.gmail.com,SMTP_PORT=587,SMTP_USER=delta.bin.he@gmail.com,SMTP_FROM_EMAIL=delta.bin.he@gmail.com,SMTP_FROM_NAME=Lemonade,CORS_ORIGINS=http://localhost:3000,ADMIN_EMAILS=delta.bin.he@gmail.com'
+
+substitutions:
+  _REGION: us-central1
+
+images:
+  - 'gcr.io/$PROJECT_ID/lem-api:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/lem-api:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

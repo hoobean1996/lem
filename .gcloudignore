@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Binaries
+bin/
+*.exe
+
+# Environment files
+.env
+.env.*
+deploy.sh
+
+# Test files
+*_test.go
+
+# Documentation
+*.md
+
+# Admin UI (exclude node_modules, keep source for build)
+admin-ui/node_modules
+admin-ui/dist
