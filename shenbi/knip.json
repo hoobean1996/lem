@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": ["src/index.tsx", "src/**/*.test.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["shenbid/**", "**/*.d.ts"],
+  "ignoreDependencies": ["prettier"],
+  "ignoreBinaries": ["tsc", "vite", "prettier", "vitest"],
+  "ignoreExportsUsedInFile": true,
+  "rules": {
+    "unlisted": "off",
+    "types": "off"
+  }
+}

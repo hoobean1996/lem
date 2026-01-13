@@ -1,0 +1,30 @@
+{
+  "name": "@lemonade/sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TypeScript SDK for Lemonade API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node test.js",
+    "test:battle": "npx tsx test-battle.ts",
+    "generate": "openapi-typescript-codegen --input https://api.gigaboo.sg/openapi.json --output ./src/generated --client fetch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "lemonade",
+    "api",
+    "sdk"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "openapi-typescript-codegen": "^0.30.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "files": [
+    "dist"
+  ]
+}

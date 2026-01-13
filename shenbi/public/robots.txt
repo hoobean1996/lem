@@ -1,0 +1,28 @@
+# Shenbi Robots.txt
+# https://www.gigaboo.sg
+
+User-agent: *
+Allow: /landing
+Allow: /login
+
+# Disallow authenticated/private pages
+Disallow: /profile
+Disallow: /settings
+Disallow: /adventure
+Disallow: /battle
+Disallow: /classroom
+Disallow: /notebook
+Disallow: /my-classes
+Disallow: /playground
+Disallow: /upgrade
+Disallow: /t/
+
+# Allow static assets
+Allow: /*.js
+Allow: /*.css
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.svg
+
+# Sitemap location
+Sitemap: https://www.gigaboo.sg/sitemap.xml
