@@ -36,3 +36,4 @@ admin-ui/dist/
 
 # Credentials
 resources/gcs/credentials.json
+node_modules/
