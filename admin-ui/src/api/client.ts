@@ -1,5 +1,9 @@
-const API_BASE = '/admin/api';
-const ADMIN_BASE = '/admin';
+const API_BASE = 'http://localhost:8000/admin/api';
+const ADMIN_BASE = 'http://localhost:8000/admin';
+
+// Helper for cross-origin fetch with credentials
+const fetchApi = (url: string, options?: RequestInit) =>
+  fetch(url, { ...options, credentials: 'include' });
 
 export interface App {
   id: number;
@@ -153,27 +157,27 @@ export interface StorageFile {
 export const api = {
   // Apps
   async getApps(): Promise<App[]> {
-    const res = await fetch(`${API_BASE}/apps`);
+    const res = await fetchApi(`${API_BASE}/apps`);
     if (!res.ok) throw new Error('Failed to fetch apps');
     const data = await res.json();
     return data.apps;
   },
 
   async getApp(appId: number): Promise<App> {
-    const res = await fetch(`${API_BASE}/apps/${appId}`);
+    const res = await fetchApi(`${API_BASE}/apps/${appId}`);
     if (!res.ok) throw new Error('Failed to fetch app');
     return res.json();
   },
 
   // Users
   async getAppUsers(appId: number): Promise<{ users: AppUser[]; is_shenbi_app: boolean; active_count: number; paid_count: number }> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/users`);
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/users`);
     if (!res.ok) throw new Error('Failed to fetch users');
     return res.json();
   },
 
   async updateShenbiRole(appId: number, userId: number, role: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/users/${userId}/shenbi-role`, {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/users/${userId}/shenbi-role`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role }),
@@ -185,7 +189,7 @@ export const api = {
   },
 
   async generateToken(appId: number, userId: number): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/users/${userId}/generate-token`, {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/users/${userId}/generate-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -197,7 +201,7 @@ export const api = {
   },
 
   async resetProgress(appId: number, userId: number): Promise<{ success: boolean; progress_deleted: number; achievements_deleted: number }> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/users/${userId}/reset-progress`, {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/users/${userId}/reset-progress`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -209,7 +213,7 @@ export const api = {
   },
 
   async sendEmail(appId: number, userId: number, subject: string, body: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/users/${userId}/send-email`, {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/users/${userId}/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subject, body }),
@@ -221,7 +225,7 @@ export const api = {
   },
 
   async sendTemplateEmail(appId: number, userId: number, templateName: string, variables: Record<string, string>): Promise<void> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/users/${userId}/send-template-email`, {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/users/${userId}/send-template-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ template_name: templateName, variables }),
@@ -234,20 +238,20 @@ export const api = {
 
   // Email Templates
   async getEmailTemplates(appId: number): Promise<EmailTemplate[]> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/email-templates`);
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/email-templates`);
     if (!res.ok) throw new Error('Failed to fetch email templates');
     const data = await res.json();
     return data.templates;
   },
 
   async getEmailTemplate(appId: number, templateId: number): Promise<EmailTemplateDetail> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/email-templates/${templateId}`);
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/email-templates/${templateId}`);
     if (!res.ok) throw new Error('Failed to fetch email template');
     return res.json();
   },
 
   async createEmailTemplate(appId: number, data: EmailTemplateCreate): Promise<{ id: number }> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/email-templates`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/email-templates`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -260,7 +264,7 @@ export const api = {
   },
 
   async updateEmailTemplate(appId: number, templateId: number, data: EmailTemplateUpdate): Promise<void> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/email-templates/${templateId}`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/email-templates/${templateId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -272,7 +276,7 @@ export const api = {
   },
 
   async deleteEmailTemplate(appId: number, templateId: number): Promise<void> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/email-templates/${templateId}`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/email-templates/${templateId}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -283,14 +287,14 @@ export const api = {
 
   // Plans
   async getPlans(appId: number): Promise<Plan[]> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/plans`);
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/plans`);
     if (!res.ok) throw new Error('Failed to fetch plans');
     const data = await res.json();
     return data.plans;
   },
 
   async createPlan(appId: number, data: PlanCreate): Promise<{ id: number }> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/plans`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/plans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -303,7 +307,7 @@ export const api = {
   },
 
   async updatePlan(appId: number, planId: number, data: PlanUpdate): Promise<void> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/plans/${planId}`, {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/plans/${planId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -315,7 +319,7 @@ export const api = {
   },
 
   async deletePlan(appId: number, planId: number): Promise<void> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/plans/${planId}`, {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/plans/${planId}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -326,14 +330,14 @@ export const api = {
 
   // Organizations
   async getOrganizations(appId: number): Promise<Organization[]> {
-    const res = await fetch(`${API_BASE}/apps/${appId}/organizations`);
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/organizations`);
     if (!res.ok) throw new Error('Failed to fetch organizations');
     const data = await res.json();
     return data.organizations;
   },
 
   async createOrganization(appId: number, data: OrganizationCreate): Promise<{ id: number }> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/organizations`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/organizations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -346,7 +350,7 @@ export const api = {
   },
 
   async updateOrganization(appId: number, orgId: number, data: OrganizationUpdate): Promise<void> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/organizations/${orgId}`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/organizations/${orgId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -358,7 +362,7 @@ export const api = {
   },
 
   async toggleOrganizationStatus(appId: number, orgId: number): Promise<{ is_active: boolean }> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/organizations/${orgId}/toggle-status`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/organizations/${orgId}/toggle-status`, {
       method: 'POST',
     });
     if (!res.ok) {
@@ -369,7 +373,7 @@ export const api = {
   },
 
   async deleteOrganization(appId: number, orgId: number): Promise<void> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/organizations/${orgId}`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/organizations/${orgId}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -380,7 +384,7 @@ export const api = {
 
   // Storage
   async getStorageFiles(appId: number, folder: string = 'shared'): Promise<StorageFile[]> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/storage/files?folder=${encodeURIComponent(folder)}`);
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/storage/files?folder=${encodeURIComponent(folder)}`);
     if (!res.ok) throw new Error('Failed to fetch storage files');
     const data = await res.json();
     return data.files;
@@ -389,7 +393,7 @@ export const api = {
   async uploadFile(appId: number, file: File, folder: string = 'shared'): Promise<StorageFile> {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/storage/upload?folder=${encodeURIComponent(folder)}`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/storage/upload?folder=${encodeURIComponent(folder)}`, {
       method: 'POST',
       body: formData,
     });
@@ -401,7 +405,7 @@ export const api = {
   },
 
   async getSignedUrl(appId: number, path: string): Promise<{ url: string; expires_in_minutes: number }> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/storage/signed-url?path=${encodeURIComponent(path)}`);
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/storage/signed-url?path=${encodeURIComponent(path)}`);
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.detail || 'Failed to get signed URL');
@@ -410,7 +414,7 @@ export const api = {
   },
 
   async deleteStorageFile(appId: number, path: string): Promise<void> {
-    const res = await fetch(`${ADMIN_BASE}/apps/${appId}/storage/file?path=${encodeURIComponent(path)}`, {
+    const res = await fetchApi(`${ADMIN_BASE}/apps/${appId}/storage/file?path=${encodeURIComponent(path)}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -421,14 +425,14 @@ export const api = {
 
   // Auth
   async getAdminUser(): Promise<AdminUser | null> {
-    const res = await fetch(`${API_BASE}/me`);
+    const res = await fetchApi(`${API_BASE}/me`);
     if (res.status === 401) return null;
     if (!res.ok) throw new Error('Failed to fetch admin user');
     return res.json();
   },
 
   async logout(): Promise<void> {
-    const res = await fetch(`${API_BASE}/logout`, { method: 'POST' });
+    const res = await fetchApi(`${API_BASE}/logout`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to logout');
   },
 };

@@ -15,6 +15,12 @@ import (
 	"gigaboo.io/lem/internal/services"
 )
 
+// adminDir is the directory for admin UI static files
+const adminDir = "admin-ui/dist"
+
+// shenbiDir is the directory for shenbi static files
+const shenbiDir = "shenbi/dist"
+
 // SetupRouter sets up all routes.
 func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {
 	if !cfg.Debug {
@@ -38,6 +44,9 @@ func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {
 	shenbiService := services.NewShenbiService(cfg, client)
 	_ = services.NewAnalyticsService(cfg)
 
+	// Admin auth middleware
+	adminAuth := middleware.NewAdminAuthMiddleware(cfg, client)
+
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService, auth)
 	subscriptionHandler := handlers.NewSubscriptionHandler(stripeService)
@@ -47,6 +56,7 @@ func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {
 	emailHandler := handlers.NewEmailHandler(emailService)
 	orgHandler := handlers.NewOrganizationHandler(orgService)
 	shenbiHandler := handlers.NewShenbiHandler(shenbiService)
+	adminHandler := handlers.NewAdminHandler(cfg, client, adminAuth, auth, emailService, storageService)
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -229,46 +239,117 @@ func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {
 		}
 	}
 
-	// Serve admin UI static files
-	setupAdminUI(r, cfg)
+	// =============================================================================
+	// Admin Routes
+	// =============================================================================
+
+	admin := r.Group("/admin")
+	{
+		// Public admin routes (no auth required)
+		admin.POST("/auth/google", adminHandler.GoogleAuth)
+		admin.GET("/logout", adminHandler.Logout)
+
+		// Protected admin API routes
+		adminAPI := admin.Group("/api")
+		adminAPI.Use(adminAuth.RequireAdmin())
+		{
+			adminAPI.GET("/me", adminHandler.GetMe)
+			adminAPI.POST("/logout", adminHandler.Logout)
+			adminAPI.GET("/apps", adminHandler.GetApps)
+			adminAPI.GET("/apps/:app_id", adminHandler.GetApp)
+			adminAPI.GET("/apps/:app_id/users", adminHandler.GetAppUsers)
+			adminAPI.POST("/apps/:app_id/users/:user_id/shenbi-role", adminHandler.UpdateShenbiRole)
+			adminAPI.POST("/apps/:app_id/users/:user_id/generate-token", adminHandler.GenerateToken)
+			adminAPI.POST("/apps/:app_id/users/:user_id/reset-progress", adminHandler.ResetProgress)
+			adminAPI.POST("/apps/:app_id/users/:user_id/send-email", adminHandler.SendEmail)
+			adminAPI.POST("/apps/:app_id/users/:user_id/send-template-email", adminHandler.SendTemplateEmail)
+			adminAPI.GET("/apps/:app_id/email-templates", adminHandler.GetEmailTemplates)
+			adminAPI.GET("/apps/:app_id/email-templates/:template_id", adminHandler.GetEmailTemplate)
+			adminAPI.GET("/apps/:app_id/plans", adminHandler.GetPlans)
+			adminAPI.PUT("/apps/:app_id/plans/:plan_id", adminHandler.UpdatePlan)
+			adminAPI.DELETE("/apps/:app_id/plans/:plan_id", adminHandler.DeletePlan)
+			adminAPI.GET("/apps/:app_id/organizations", adminHandler.GetOrganizations)
+		}
+
+		// Protected admin form/action routes (without /api prefix)
+		adminProtected := admin.Group("")
+		adminProtected.Use(adminAuth.RequireAdmin())
+		{
+			adminProtected.POST("/apps/:app_id/email-templates", adminHandler.CreateEmailTemplate)
+			adminProtected.PUT("/apps/:app_id/email-templates/:template_id", adminHandler.UpdateEmailTemplate)
+			adminProtected.DELETE("/apps/:app_id/email-templates/:template_id", adminHandler.DeleteEmailTemplate)
+			adminProtected.POST("/apps/:app_id/plans", adminHandler.CreatePlan)
+			adminProtected.POST("/apps/:app_id/organizations", adminHandler.CreateOrganization)
+			adminProtected.PUT("/apps/:app_id/organizations/:org_id", adminHandler.UpdateOrganization)
+			adminProtected.POST("/apps/:app_id/organizations/:org_id/toggle-status", adminHandler.ToggleOrganizationStatus)
+			adminProtected.DELETE("/apps/:app_id/organizations/:org_id", adminHandler.DeleteOrganization)
+			adminProtected.GET("/apps/:app_id/storage/files", adminHandler.GetStorageFiles)
+			adminProtected.POST("/apps/:app_id/storage/upload", adminHandler.UploadStorageFile)
+			adminProtected.GET("/apps/:app_id/storage/signed-url", adminHandler.GetStorageSignedURL)
+			adminProtected.DELETE("/apps/:app_id/storage/file", adminHandler.DeleteStorageFile)
+		}
+	}
+
+	// Serve static files for shenbi (public app) and admin UI
+	setupStaticFiles(r, cfg)
 
 	return r
 }
 
-// setupAdminUI configures static file serving for the admin UI SPA
-func setupAdminUI(r *gin.Engine, cfg *config.Config) {
-	// Determine the static files directory
-	staticDir := "admin-ui/dist"
+// setupStaticFiles configures static file serving for both shenbi and admin UI SPAs
+func setupStaticFiles(r *gin.Engine, cfg *config.Config) {
+	adminExists := true
+	shenbiExists := true
 
-	// Check if dist exists, otherwise skip
-	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
-		// In development, you need to build first: cd admin-ui && npm run build
-		return
+	if _, err := os.Stat(adminDir); os.IsNotExist(err) {
+		adminExists = false
+	}
+	if _, err := os.Stat(shenbiDir); os.IsNotExist(err) {
+		shenbiExists = false
 	}
 
-	// Serve admin index at /admin
-	r.GET("/admin", func(c *gin.Context) {
-		c.File(filepath.Join(staticDir, "index.html"))
-	})
+	// Serve admin index at /admin (for direct access to admin panel root)
+	if adminExists {
+		r.GET("/admin", func(c *gin.Context) {
+			c.File(filepath.Join(adminDir, "index.html"))
+		})
+	}
 
-	// Serve all admin paths using NoRoute fallback
+	// Serve shenbi index at /
+	if shenbiExists {
+		r.GET("/", func(c *gin.Context) {
+			c.File(filepath.Join(shenbiDir, "index.html"))
+		})
+	}
+
+	// Handle all other routes
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		// Handle /admin/* routes
-		if strings.HasPrefix(path, "/admin/") {
-			// Remove /admin prefix to get the file path
-			filePath := strings.TrimPrefix(path, "/admin")
-			fullPath := filepath.Join(staticDir, filePath)
+		// Admin API routes - these are handled by actual routes, so return 404 JSON
+		// This means the route wasn't found by the router
+		if strings.HasPrefix(path, "/admin/auth/") || strings.HasPrefix(path, "/admin/api/") || strings.HasPrefix(path, "/admin/apps/") {
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Not found"})
+			return
+		}
 
-			// Check if file exists
+		// Handle /admin/* static file routes (for SPA)
+		if strings.HasPrefix(path, "/admin") && adminExists {
+			filePath := strings.TrimPrefix(path, "/admin")
+			if filePath == "" || filePath == "/" {
+				c.File(filepath.Join(adminDir, "index.html"))
+				return
+			}
+			fullPath := filepath.Join(adminDir, filePath)
+
+			// Check if file exists (for assets like /admin/assets/xxx.js)
 			if _, err := os.Stat(fullPath); err == nil {
 				c.File(fullPath)
 				return
 			}
 
-			// SPA fallback - serve index.html
-			c.File(filepath.Join(staticDir, "index.html"))
+			// SPA fallback - serve index.html for client-side routing
+			c.File(filepath.Join(adminDir, "index.html"))
 			return
 		}
 
@@ -278,7 +359,22 @@ func setupAdminUI(r *gin.Engine, cfg *config.Config) {
 			return
 		}
 
-		// Other routes - redirect to admin
-		c.Redirect(http.StatusFound, "/admin")
+		// Handle shenbi routes (everything else)
+		if shenbiExists {
+			fullPath := filepath.Join(shenbiDir, path)
+
+			// Check if file exists (for assets like /assets/xxx.js)
+			if _, err := os.Stat(fullPath); err == nil {
+				c.File(fullPath)
+				return
+			}
+
+			// SPA fallback - serve index.html for client-side routing
+			c.File(filepath.Join(shenbiDir, "index.html"))
+			return
+		}
+
+		// Nothing available
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 	})
 }

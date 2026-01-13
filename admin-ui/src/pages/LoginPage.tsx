@@ -47,14 +47,15 @@ function LoginPage() {
 
   const handleCredentialResponse = async (response: { credential: string }) => {
     try {
-      const res = await fetch('/admin/auth/google', {
+      const res = await fetch('http://localhost:8000/admin/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id_token: response.credential }),
+        credentials: 'include',
       })
 
       if (res.ok) {
-        window.location.href = '/admin/'
+        window.location.href = '/'
       } else {
         const error = await res.json()
         alert(error.detail || 'Login failed')
