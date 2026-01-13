@@ -16,10 +16,10 @@ import (
 )
 
 // adminDir is the directory for admin UI static files
-const adminDir = "admin-ui/dist"
+const adminDir = "products/admin/dist"
 
 // shenbiDir is the directory for shenbi static files
-const shenbiDir = "shenbi/dist"
+const shenbiDir = "products/shenbi/dist"
 
 // SetupRouter sets up all routes.
 func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {

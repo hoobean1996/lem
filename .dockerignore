@@ -23,12 +23,10 @@ deploy.sh
 # Documentation
 *.md
 
-# Admin UI (exclude node_modules, keep source for build)
-admin-ui/node_modules
-admin-ui/dist
-
-# Shenbi (exclude node_modules, keep source for build)
-shenbi/node_modules
-shenbi/dist
-shenbi/.git
-shenbi/packages/*/node_modules
+# Frontend (exclude node_modules and dist, keep source for build)
+node_modules
+products/admin/node_modules
+products/admin/dist
+products/shenbi/node_modules
+products/shenbi/dist
+products/shenbi/packages/*/node_modules

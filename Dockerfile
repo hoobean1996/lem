@@ -1,33 +1,22 @@
-# Build admin UI stage
-FROM node:20-alpine AS admin-builder
+# Build frontend stage (using npm workspaces)
+FROM node:20-alpine AS frontend-builder
 
-WORKDIR /app/admin-ui
+WORKDIR /app
 
-# Copy admin UI source
-COPY admin-ui/package*.json ./
-RUN npm ci
+# Copy workspace config and all package files
+COPY package.json ./
+COPY products/admin/package*.json ./products/admin/
+COPY products/shenbi/package*.json ./products/shenbi/
+COPY products/shenbi/packages/lemonade-sdk/package*.json ./products/shenbi/packages/lemonade-sdk/
 
-COPY admin-ui/ ./
-RUN npm run build
+# Install all dependencies
+RUN npm install
 
-# Build shenbi stage
-FROM node:20-alpine AS shenbi-builder
+# Copy source files
+COPY products/ ./products/
 
-WORKDIR /app/shenbi
-
-# Copy and build SDK first
-COPY shenbi/packages/lemonade-sdk/package*.json ./packages/lemonade-sdk/
-RUN cd packages/lemonade-sdk && npm ci
-
-COPY shenbi/packages/lemonade-sdk/ ./packages/lemonade-sdk/
-RUN cd packages/lemonade-sdk && npm run build
-
-# Copy and build main app
-COPY shenbi/package*.json ./
-RUN npm ci --ignore-scripts
-
-COPY shenbi/ ./
-RUN npm run build
+# Build SDK first, then both frontends
+RUN npm run build -w products/shenbi/packages/lemonade-sdk && npm run build
 
 # Build Go stage
 FROM golang:1.24-alpine AS builder
@@ -56,11 +45,9 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/server .
 
-# Copy admin UI dist from admin-builder
-COPY --from=admin-builder /app/admin-ui/dist ./admin-ui/dist/
-
-# Copy shenbi dist from shenbi-builder
-COPY --from=shenbi-builder /app/shenbi/dist ./shenbi/dist/
+# Copy frontend dists
+COPY --from=frontend-builder /app/products/admin/dist ./products/admin/dist/
+COPY --from=frontend-builder /app/products/shenbi/dist ./products/shenbi/dist/
 
 # Expose port (Cloud Run uses PORT env var, default 8080)
 EXPOSE 8080

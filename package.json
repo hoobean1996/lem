@@ -1,0 +1,18 @@
+{
+  "name": "lem",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "products/*",
+    "products/shenbi/packages/*"
+  ],
+  "scripts": {
+    "dev:admin": "npm run dev -w products/admin",
+    "dev:shenbi": "npm run dev -w products/shenbi",
+    "build:admin": "npm run build -w products/admin",
+    "build:shenbi": "npm run build -w products/shenbi",
+    "build": "npm run build:admin && npm run build:shenbi",
+    "lint": "npm run lint -w products/admin && npm run lint -w products/shenbi",
+    "test": "npm run test -w products/shenbi"
+  }
+}

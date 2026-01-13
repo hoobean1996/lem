@@ -1,7 +1,7 @@
-.PHONY: all build run test clean dev generate migrate docker-up docker-down admin-build admin-dev shenbi-build shenbi-dev deploy docker-build docker-push
+.PHONY: all build run test clean dev generate migrate docker-up docker-down admin-build admin-dev shenbi-build shenbi-dev deploy docker-build docker-push frontend-install frontend-build
 
 # Build the application
-build: admin-build shenbi-build
+build: frontend-build
 	go build -o bin/server ./cmd/server
 
 # Build Go only (without admin-ui)
@@ -81,22 +81,31 @@ lint:
 # All pre-commit checks
 check: fmt lint test
 
+# Install all frontend dependencies (npm workspaces)
+frontend-install:
+	npm install
+
 # Build admin UI
 admin-build:
-	cd admin-ui && npm install && npm run build
+	npm run build:admin
 
 # Run admin UI dev server
 admin-dev:
-	cd admin-ui && npm run dev
+	npm run dev:admin
 
 # Build shenbi (public app)
 shenbi-build:
-	cd shenbi/packages/lemonade-sdk && npm install
-	cd shenbi && npm install --ignore-scripts && npm run build
+	npm run build -w products/shenbi/packages/lemonade-sdk
+	npm run build:shenbi
 
 # Run shenbi dev server
 shenbi-dev:
-	cd shenbi && npm run dev
+	npm run dev:shenbi
+
+# Build all frontends
+frontend-build: frontend-install
+	npm run build -w products/shenbi/packages/lemonade-sdk
+	npm run build
 
 # Deploy to Google Cloud Run
 deploy:
