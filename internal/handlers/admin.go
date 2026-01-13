@@ -1299,6 +1299,103 @@ func (h *AdminHandler) DeleteOrganization(c *gin.Context) {
 }
 
 // =============================================================================
+// Delete User
+// =============================================================================
+
+// DeleteUser deletes a user and all associated data from an app.
+func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	appID, err := strconv.Atoi(c.Param("app_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid app ID"})
+		return
+	}
+
+	userID, err := strconv.Atoi(c.Param("user_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid user ID"})
+		return
+	}
+
+	// Verify app exists
+	_, err = h.client.App.Get(c.Request.Context(), appID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "App not found"})
+		return
+	}
+
+	// Verify user exists
+	_, err = h.client.User.Get(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "User not found"})
+		return
+	}
+
+	// Delete user_app association
+	userAppDeleted, err := h.client.UserApp.Delete().
+		Where(
+			userapp.HasAppWith(app.ID(appID)),
+			userapp.HasUserWith(user.ID(userID)),
+		).
+		Exec(c.Request.Context())
+	if err != nil {
+		userAppDeleted = 0
+	}
+
+	// Delete shenbi profile
+	shenbiDeleted, err := h.client.ShenbiProfile.Delete().
+		Where(
+			shenbiprofile.HasAppWith(app.ID(appID)),
+			shenbiprofile.HasUserWith(user.ID(userID)),
+		).
+		Exec(c.Request.Context())
+	if err != nil {
+		shenbiDeleted = 0
+	}
+
+	// Delete progress
+	progressDeleted, err := h.client.UserProgress.Delete().
+		Where(
+			userprogress.HasAppWith(app.ID(appID)),
+			userprogress.HasUserWith(user.ID(userID)),
+		).
+		Exec(c.Request.Context())
+	if err != nil {
+		progressDeleted = 0
+	}
+
+	// Delete achievements
+	achievementsDeleted, err := h.client.Achievement.Delete().
+		Where(
+			achievement.HasAppWith(app.ID(appID)),
+			achievement.HasUserWith(user.ID(userID)),
+		).
+		Exec(c.Request.Context())
+	if err != nil {
+		achievementsDeleted = 0
+	}
+
+	// Delete subscriptions
+	subscriptionsDeleted, err := h.client.Subscription.Delete().
+		Where(
+			subscription.HasAppWith(app.ID(appID)),
+			subscription.HasUserWith(user.ID(userID)),
+		).
+		Exec(c.Request.Context())
+	if err != nil {
+		subscriptionsDeleted = 0
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":               true,
+		"user_app_deleted":      userAppDeleted,
+		"shenbi_profile_deleted": shenbiDeleted,
+		"progress_deleted":      progressDeleted,
+		"achievements_deleted":  achievementsDeleted,
+		"subscriptions_deleted": subscriptionsDeleted,
+	})
+}
+
+// =============================================================================
 // Storage
 // =============================================================================
 

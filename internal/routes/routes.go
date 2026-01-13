@@ -77,7 +77,7 @@ func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {
 				authRoutes.POST("/login", authHandler.Login)
 				authRoutes.POST("/device", authHandler.DeviceLogin)
 				authRoutes.POST("/refresh", authHandler.RefreshToken)
-				authRoutes.POST("/google/authorize", googleOAuthHandler.Authorize)
+				authRoutes.POST("/google", googleOAuthHandler.Login)
 				authRoutes.POST("/google/callback", googleOAuthHandler.Callback)
 			}
 
@@ -186,6 +186,7 @@ func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {
 				classroomRoutes := shenbiRoutes.Group("/classrooms")
 				{
 					classroomRoutes.GET("", shenbiHandler.GetClassrooms)
+					classroomRoutes.GET("/enrolled", shenbiHandler.GetEnrolledClassrooms)
 					classroomRoutes.POST("", shenbiHandler.CreateClassroom)
 					classroomRoutes.GET("/:classroom_id", shenbiHandler.GetClassroom)
 					classroomRoutes.PUT("/:classroom_id", shenbiHandler.UpdateClassroom)
@@ -261,6 +262,7 @@ func SetupRouter(cfg *config.Config, client *ent.Client) *gin.Engine {
 			adminAPI.POST("/apps/:app_id/users/:user_id/shenbi-role", adminHandler.UpdateShenbiRole)
 			adminAPI.POST("/apps/:app_id/users/:user_id/generate-token", adminHandler.GenerateToken)
 			adminAPI.POST("/apps/:app_id/users/:user_id/reset-progress", adminHandler.ResetProgress)
+			adminAPI.DELETE("/apps/:app_id/users/:user_id", adminHandler.DeleteUser)
 			adminAPI.POST("/apps/:app_id/users/:user_id/send-email", adminHandler.SendEmail)
 			adminAPI.POST("/apps/:app_id/users/:user_id/send-template-email", adminHandler.SendTemplateEmail)
 			adminAPI.GET("/apps/:app_id/email-templates", adminHandler.GetEmailTemplates)
@@ -328,7 +330,7 @@ func setupStaticFiles(r *gin.Engine, cfg *config.Config) {
 
 		// Admin API routes - these are handled by actual routes, so return 404 JSON
 		// This means the route wasn't found by the router
-		if strings.HasPrefix(path, "/admin/auth/") || strings.HasPrefix(path, "/admin/api/") || strings.HasPrefix(path, "/admin/apps/") {
+		if strings.HasPrefix(path, "/admin/auth/") || strings.HasPrefix(path, "/admin/api/") {
 			c.JSON(http.StatusNotFound, gin.H{"detail": "Not found"})
 			return
 		}

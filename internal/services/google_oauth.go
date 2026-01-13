@@ -10,10 +10,13 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/idtoken"
 
 	"gigaboo.io/lem/internal/config"
 	"gigaboo.io/lem/internal/ent"
+	"gigaboo.io/lem/internal/ent/app"
 	"gigaboo.io/lem/internal/ent/user"
+	"gigaboo.io/lem/internal/ent/userapp"
 )
 
 // GoogleOAuthService handles Google OAuth operations.
@@ -212,6 +215,100 @@ func (s *GoogleOAuthService) findOrCreateUser(ctx context.Context, info *GoogleU
 		SetGoogleAccessToken(token.AccessToken).
 		SetGoogleRefreshToken(token.RefreshToken).
 		SetGoogleTokenExpiresAt(token.Expiry).
+		SetIsVerified(info.VerifiedEmail).
+		SetLastLoginAt(time.Now()).
+		Save(ctx)
+}
+
+// VerifyIDToken verifies a Google ID token and returns/creates a user.
+func (s *GoogleOAuthService) VerifyIDToken(ctx context.Context, idTokenStr string) (*ent.User, error) {
+	payload, err := idtoken.Validate(ctx, idTokenStr, s.cfg.GoogleClientID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ID token: %w", err)
+	}
+
+	// Verify issuer
+	iss, ok := payload.Claims["iss"].(string)
+	if !ok || (iss != "accounts.google.com" && iss != "https://accounts.google.com") {
+		return nil, errors.New("invalid issuer")
+	}
+
+	email, _ := payload.Claims["email"].(string)
+	name, _ := payload.Claims["name"].(string)
+	picture, _ := payload.Claims["picture"].(string)
+	sub, _ := payload.Claims["sub"].(string) // Google user ID
+	emailVerified, _ := payload.Claims["email_verified"].(bool)
+
+	if email == "" {
+		return nil, errors.New("email not found in token")
+	}
+
+	// Find or create user
+	userInfo := &GoogleUserInfo{
+		ID:            sub,
+		Email:         email,
+		Name:          name,
+		Picture:       picture,
+		VerifiedEmail: emailVerified,
+	}
+
+	return s.findOrCreateUserFromIDToken(ctx, userInfo)
+}
+
+// EnsureUserApp ensures a user-app association exists.
+func (s *GoogleOAuthService) EnsureUserApp(ctx context.Context, userID, appID int) error {
+	// Check if association already exists
+	exists, err := s.client.UserApp.Query().
+		Where(
+			userapp.HasUserWith(user.ID(userID)),
+			userapp.HasAppWith(app.ID(appID)),
+		).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+
+	// Create association
+	_, err = s.client.UserApp.Create().
+		SetUserID(userID).
+		SetAppID(appID).
+		Save(ctx)
+	return err
+}
+
+func (s *GoogleOAuthService) findOrCreateUserFromIDToken(ctx context.Context, info *GoogleUserInfo) (*ent.User, error) {
+	// Try to find user by Google ID
+	u, err := s.client.User.Query().
+		Where(user.GoogleID(info.ID)).
+		First(ctx)
+	if err == nil {
+		// Update last login
+		return s.client.User.UpdateOne(u).
+			SetLastLoginAt(time.Now()).
+			Save(ctx)
+	}
+
+	// Try to find user by email
+	u, err = s.client.User.Query().
+		Where(user.Email(info.Email)).
+		First(ctx)
+	if err == nil {
+		// Link Google account
+		return s.client.User.UpdateOne(u).
+			SetGoogleID(info.ID).
+			SetLastLoginAt(time.Now()).
+			Save(ctx)
+	}
+
+	// Create new user
+	return s.client.User.Create().
+		SetEmail(info.Email).
+		SetName(info.Name).
+		SetAvatarURL(info.Picture).
+		SetGoogleID(info.ID).
 		SetIsVerified(info.VerifiedEmail).
 		SetLastLoginAt(time.Now()).
 		Save(ctx)

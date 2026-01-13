@@ -26,3 +26,9 @@ deploy.sh
 # Admin UI (exclude node_modules, keep source for build)
 admin-ui/node_modules
 admin-ui/dist
+
+# Shenbi (exclude node_modules, keep source for build)
+shenbi/node_modules
+shenbi/dist
+shenbi/.git
+shenbi/packages/*/node_modules

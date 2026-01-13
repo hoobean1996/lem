@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 
 	"gigaboo.io/lem/internal/config"
@@ -150,7 +151,7 @@ func (s *StorageService) ListFiles(ctx context.Context, prefix string) ([]string
 	it := s.bucket.Objects(ctx, &storage.Query{Prefix: prefix})
 	for {
 		attrs, err := it.Next()
-		if err == storage.ErrObjectNotExist {
+		if err == iterator.Done {
 			break
 		}
 		if err != nil {

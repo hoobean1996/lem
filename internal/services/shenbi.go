@@ -60,6 +60,27 @@ func (s *ShenbiService) GetProfile(ctx context.Context, appID, userID int) (*ent
 		First(ctx)
 }
 
+// GetOrCreateProfile returns user's profile, creating one with defaults if it doesn't exist.
+func (s *ShenbiService) GetOrCreateProfile(ctx context.Context, appID, userID int, userName string) (*ent.ShenbiProfile, error) {
+	profile, err := s.GetProfile(ctx, appID, userID)
+	if err == nil {
+		return profile, nil
+	}
+
+	// Create default profile
+	displayName := userName
+	if displayName == "" {
+		displayName = "Student"
+	}
+
+	return s.client.ShenbiProfile.Create().
+		SetAppID(appID).
+		SetUserID(userID).
+		SetRole(shenbiprofile.RoleSTUDENT).
+		SetDisplayName(displayName).
+		Save(ctx)
+}
+
 // CreateProfile creates a new profile.
 func (s *ShenbiService) CreateProfile(ctx context.Context, appID, userID int, input ProfileInput) (*ent.ShenbiProfile, error) {
 	return s.client.ShenbiProfile.Create().

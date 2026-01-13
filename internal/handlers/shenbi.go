@@ -33,9 +33,10 @@ func (h *ShenbiHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.shenbiService.GetProfile(c.Request.Context(), app.ID, user.ID)
+	// Auto-create profile if it doesn't exist
+	profile, err := h.shenbiService.GetOrCreateProfile(c.Request.Context(), app.ID, user.ID, user.Name)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get profile"})
 		return
 	}
 
@@ -225,6 +226,24 @@ func (h *ShenbiHandler) GetClassrooms(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"classrooms": classrooms})
+}
+
+// GetEnrolledClassrooms returns classrooms the user is enrolled in as a student.
+func (h *ShenbiHandler) GetEnrolledClassrooms(c *gin.Context) {
+	user := middleware.GetUserFromGin(c)
+	app := middleware.GetAppFromGin(c)
+	if user == nil || app == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+		return
+	}
+
+	classrooms, err := h.shenbiService.GetClassrooms(c.Request.Context(), app.ID, user.ID, false)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, classrooms)
 }
 
 // GetClassroom returns a single classroom.

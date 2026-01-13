@@ -97,6 +97,20 @@ function UsersTab() {
     }
   }
 
+  const handleDeleteUser = async (userId: number, email: string) => {
+    setOpenDropdown(null)
+    if (!confirm(`Are you sure you want to delete user ${email}?\n\nThis will permanently remove:\n- User's app association\n- Profile data\n- All progress and achievements\n- Subscription data\n\nThis action cannot be undone.`)) {
+      return
+    }
+    try {
+      await api.deleteUser(appId, userId)
+      setUsers(users.filter(u => u.user.id !== userId))
+      alert(`User ${email} has been deleted successfully.`)
+    } catch (err) {
+      alert('Error: ' + (err as Error).message)
+    }
+  }
+
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!emailModal) return
@@ -361,9 +375,18 @@ function UsersTab() {
               const user = users.find(u => u.user.id === openDropdown)
               if (user) openEmailModal(user.user.id, user.user.email, user.user.name || '')
             }}
-            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-lg"
+            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
           >
             Send Email
+          </button>
+          <button
+            onClick={() => {
+              const user = users.find(u => u.user.id === openDropdown)
+              if (user) handleDeleteUser(user.user.id, user.user.email)
+            }}
+            className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-b-lg"
+          >
+            Delete User
           </button>
         </div>,
         document.body

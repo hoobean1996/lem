@@ -1,7 +1,7 @@
-.PHONY: all build run test clean dev generate migrate docker-up docker-down admin-build admin-dev deploy docker-build docker-push
+.PHONY: all build run test clean dev generate migrate docker-up docker-down admin-build admin-dev shenbi-build shenbi-dev deploy docker-build docker-push
 
 # Build the application
-build: admin-build
+build: admin-build shenbi-build
 	go build -o bin/server ./cmd/server
 
 # Build Go only (without admin-ui)
@@ -88,6 +88,15 @@ admin-build:
 # Run admin UI dev server
 admin-dev:
 	cd admin-ui && npm run dev
+
+# Build shenbi (public app)
+shenbi-build:
+	cd shenbi/packages/lemonade-sdk && npm install
+	cd shenbi && npm install --ignore-scripts && npm run build
+
+# Run shenbi dev server
+shenbi-dev:
+	cd shenbi && npm run dev
 
 # Deploy to Google Cloud Run
 deploy:

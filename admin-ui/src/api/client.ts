@@ -212,6 +212,17 @@ export const api = {
     return res.json();
   },
 
+  async deleteUser(appId: number, userId: number): Promise<{ success: boolean }> {
+    const res = await fetchApi(`${API_BASE}/apps/${appId}/users/${userId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.detail || 'Failed to delete user');
+    }
+    return res.json();
+  },
+
   async sendEmail(appId: number, userId: number, subject: string, body: string): Promise<void> {
     const res = await fetchApi(`${API_BASE}/apps/${appId}/users/${userId}/send-email`, {
       method: 'POST',
